@@ -1123,10 +1123,13 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
     soapy_protocol_set_tx_frequency();
   } else {
     //
-    // Non-LIME (e.g. Pluto): the TX stream is NOT active during RX.
-    // Set the TX LO frequency and gain *before* activating the stream,
-    // so the hardware is fully configured when it starts transmitting.
+    // Non-LIME (e.g. Pluto): the TX chain is completely torn down during RX
+    // (see soapy_protocol_txrx()). Re-create it here from scratch, configure
+    // frequency and gain *before* activating, so the hardware is fully set up
+    // before any IQ samples are written.
     //
+    soapy_protocol_create_transmitter(tx);
+    soapy_protocol_set_tx_antenna(tx->antenna);
     soapy_protocol_set_tx_frequency();
     soapy_protocol_set_tx_gain(tx->drive);
     soapy_protocol_start_transmitter();
@@ -1162,15 +1165,24 @@ void soapy_protocol_txrx(void) {
     }
   } else {
     //
-    // Non-LIME (e.g. Pluto): deactivate the TX stream so the hardware
-    // stops transmitting immediately. It will be re-activated on the
-    // next RX->TX transition (see soapy_protocol_rxtx()).
+    // Non-LIME (e.g. Pluto): deactivateStream() alone does not stop the Pluto
+    // TX hardware — the IIO driver keeps the TX chain active as long as the
+    // stream exists. We must close the stream entirely so that libiio destroys
+    // the kernel DMA buffer and the AD936x TX path goes idle.
+    // The stream will be re-created on the next RX->TX transition.
     //
-    int rc = SoapySDRDevice_deactivateStream(soapy_device, tx_stream, 0, 0LL);
-
-    if (rc != 0) {
-      t_print("%s: DeactivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
+    if (tx_stream != NULL) {
+      SoapySDRDevice_deactivateStream(soapy_device, tx_stream, 0, 0LL);
+      SoapySDRDevice_closeStream(soapy_device, tx_stream);
+      tx_stream = NULL;
     }
+
+    if (tx_output_buffer != NULL) {
+      g_free(tx_output_buffer);
+      tx_output_buffer = NULL;
+    }
+
+    tx_output_buffer_index = 0;
   }
 
   for (int id = 0; id < RECEIVERS; id++) {

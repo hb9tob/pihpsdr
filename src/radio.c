@@ -1730,27 +1730,27 @@ void radio_start_radio(void) {
     }
 
     if (can_transmit) {
-      t_print("%s: create SOAPY transmitter\n", __func__);
-      soapy_protocol_create_transmitter(transmitter);
-      soapy_protocol_set_tx_antenna(transmitter->antenna);
-
       if (have_lime) {
         //
-        // LIME: set TX gain to 30 for the auto-calibration that takes place
-        //       upon starting the transmitter, then start immediately.
+        // LIME: create and start TX stream immediately.
+        // TX gain is set to 30 for the auto-calibration that takes place
+        // upon starting the transmitter, then reduced to 0 to avoid LO leak.
+        // The gain is restored to nominal drive upon RX->TX transitions.
         //
+        t_print("%s: create SOAPY transmitter (LIME)\n", __func__);
+        soapy_protocol_create_transmitter(transmitter);
+        soapy_protocol_set_tx_antenna(transmitter->antenna);
         soapy_protocol_set_tx_gain(30);
         soapy_protocol_set_tx_frequency();
         soapy_protocol_start_transmitter();
-        // LIME: set TX gain to 0 to avoid LO leak. The TX gain
-        //       is set to the nominal drive upon RX/TX transitions,
-        //       and reset to zero upon TX/RX transitions.
         soapy_protocol_set_tx_gain(0);
       }
       //
-      // Non-LIME (e.g. Pluto): do NOT activate the TX stream at startup.
-      // The stream will be activated only upon the first RX->TX transition,
-      // after setting the TX frequency and gain (see soapy_protocol_rxtx()).
+      // Non-LIME (e.g. Pluto): do NOT touch the TX chain at all at startup.
+      // Even calling setupStream() is enough to activate the Pluto TX hardware
+      // at the IIO driver level. The entire TX chain (create + configure +
+      // activate) is deferred to the first RX->TX transition (soapy_protocol_rxtx()).
+      // On TX->RX the stream is closed completely (soapy_protocol_txrx()).
       //
     }
 
