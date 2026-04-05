@@ -139,3 +139,28 @@ https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual.pdf
 - HermesLite-II I/O-board support
 - audio recording (RX capture) and playback (TX)
 - dynamic screen resizing in the "Screen" menu, including transitions between full-screen and window mode
+
+---
+
+## Acknowledgements
+
+This project stands on the work of several people — many thanks to all of them:
+
+- **John Melton, G0ORX / N6LYT** — original author of piHPSDR (2015).
+  The entire SDR host architecture, protocol handling and UI are his work.
+  https://github.com/g0orx/pihpsdr
+
+- **Christoph van Wüllen, DL1YCF** — current maintainer of the upstream fork
+  used as the base for this repository. Responsible for the vast majority of
+  features present in the modern codebase (multi-notch, NR3/NR4, client/server,
+  G2-Ultra support, WDSP integration improvements, and much more).
+  https://github.com/dl1ycf/pihpsdr
+
+- **Warren Pratt, NR0V** — author of the WDSP (Wideband DSP) signal processing
+  library that provides all RX/TX DSP functions (filters, noise reduction,
+  AGC, modulation/demodulation, etc.).
+  https://github.com/WDSP/WDSP
+
+- **Mike T, M0AWS** — author of the `install-pihpsdr` shell script for Linux PC,
+  which served as the basis for the install script included in this repository.
+  https://m0aws.co.uk/
