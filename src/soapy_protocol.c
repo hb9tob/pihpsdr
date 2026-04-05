@@ -753,6 +753,13 @@ void soapy_protocol_iq_samples(const double isample, const double qsample) {
 
   if (radio_is_transmitting()) {
     //
+    // Guard against the race condition between this RX thread and the GTK
+    // thread calling soapy_protocol_txrx(): the GTK thread may have already
+    // closed the stream and freed the buffer while mox is still 1.
+    //
+    if (tx_stream == NULL || tx_output_buffer == NULL) { return; }
+
+    //
     // The "iqswap" logic has now been removed  from transmitter.c
     // and moved here, because this is where it is also handled
     // upon RX.
