@@ -515,13 +515,14 @@ void soapy_protocol_stop_transmitter(void) {
   // IQ samples stop anyway if the receiver(s) are not running, since
   // then tx_add_mic_sample() is no longer called.
   //
-  // We refrain from stopping the transmitter because for LIME, because
+  // For LIME, we refrain from stopping the transmitter because
   // auto-calibration takes place when starting the transmitter and
-  // then we let it run forever (except reducing the output level to zero
+  // we let it run forever (except reducing the output level to zero
   // when we are not transmitting).
   //
-  // TODO: use start_transmitter/stop_transmitter in RXTX cycles
-  //       when NOT using a LIMEsdr.
+  // For non-LIME devices (e.g. Pluto), the TX stream is activated and
+  // deactivated on each RX->TX and TX->RX transition respectively
+  // (see soapy_protocol_rxtx() and soapy_protocol_txrx()).
   //
   ASSERT_SERVER();
   int rc;
@@ -1119,9 +1120,17 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
     usleep(30000);
     soapy_protocol_set_tx_antenna(tx->antenna);
     soapy_protocol_set_tx_gain(tx->drive);
+    soapy_protocol_set_tx_frequency();
+  } else {
+    //
+    // Non-LIME (e.g. Pluto): the TX stream is NOT active during RX.
+    // Set the TX LO frequency and gain *before* activating the stream,
+    // so the hardware is fully configured when it starts transmitting.
+    //
+    soapy_protocol_set_tx_frequency();
+    soapy_protocol_set_tx_gain(tx->drive);
+    soapy_protocol_start_transmitter();
   }
-
-  soapy_protocol_set_tx_frequency();
 }
 
 void soapy_protocol_txrx(void) {
@@ -1132,7 +1141,6 @@ void soapy_protocol_txrx(void) {
   // and the WDSP receivers are slewed up (in non-DUPLEX case)
   //
   // This routine is *never* called if there is no transmitter!
-  //
   //
   if (have_lime) {
     //
@@ -1151,6 +1159,17 @@ void soapy_protocol_txrx(void) {
 
     for (int id = 0; id < RECEIVERS; id++) {
       soapy_protocol_rx_unattenuate(id);
+    }
+  } else {
+    //
+    // Non-LIME (e.g. Pluto): deactivate the TX stream so the hardware
+    // stops transmitting immediately. It will be re-activated on the
+    // next RX->TX transition (see soapy_protocol_rxtx()).
+    //
+    int rc = SoapySDRDevice_deactivateStream(soapy_device, tx_stream, 0, 0LL);
+
+    if (rc != 0) {
+      t_print("%s: DeactivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   }
 

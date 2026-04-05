@@ -6,7 +6,116 @@
 supporting both the old (P1) and new (P2) HPSDR protocols, as well as the SoapySDR framework.
 It runs on Linux (Raspberry Pi but also Desktop or Laptop computers running LINUX) and MacOS (Intel or AppleSilicon CPUs, using  "Homebrew" or "MacPorts").
 
-**piHPSDR Manual (PDF file, about 300 pages) for release versions:**
+---
+
+## HB9TOB fork — changes vs upstream DL1YCF
+
+This fork is based on [DL1YCF's piHPSDR](https://github.com/dl1ycf/pihpsdr) and adds the following fix:
+
+### Adalm Pluto TX chain fix (SoapySDR)
+
+**Problem:** When using an Adalm Pluto (or any SoapySDR device) the TX stream was
+activated at program startup, causing the hardware to transmit immediately even
+while in receive mode.
+
+**Fix:** For non-LimeSDR SoapySDR devices the TX stream is now:
+- **not** activated at startup,
+- activated only when entering TX (after setting the LO frequency and TX gain),
+- deactivated immediately when returning to RX.
+
+The LimeSDR behaviour is unchanged (its TX stream must remain active for
+auto-calibration purposes).
+
+---
+
+## Installation from scratch (Linux PC / Desktop)
+
+### Quick install with the provided script
+
+```bash
+curl -sL https://raw.githubusercontent.com/hb9tob/pihpsdr/master/install-pihpsdr-hb9tob.sh | bash
+```
+
+Or download and run manually:
+
+```bash
+wget https://raw.githubusercontent.com/hb9tob/pihpsdr/master/install-pihpsdr-hb9tob.sh
+chmod +x install-pihpsdr-hb9tob.sh
+./install-pihpsdr-hb9tob.sh
+```
+
+The script will:
+1. Clone this repository into `~/PiHPSDR-HB9TOB-<date>/`
+2. Install all required system libraries (`libinstall.sh`)
+3. Create `make.config.pihpsdr` with `GPIO=OFF` and `SOAPYSDR=ON`
+4. Compile piHPSDR
+5. Optionally build SoapySDR device modules (Pluto, RTL-SDR, Airspy, HackRF, SDRplay)
+
+### Manual installation step by step
+
+#### 1. Install dependencies
+
+```bash
+git clone https://github.com/hb9tob/pihpsdr
+cd pihpsdr
+./LINUX/libinstall.sh
+```
+
+#### 2. Build configuration
+
+Create `make.config.pihpsdr` in the project root:
+
+```
+GPIO=OFF
+SOAPYSDR=ON
+```
+
+- `GPIO=OFF` — disable Raspberry Pi GPIO support (not needed on a PC)
+- `SOAPYSDR=ON` — enable SoapySDR framework (required for Adalm Pluto, RTL-SDR, etc.)
+
+#### 3. Compile
+
+```bash
+make clean && make
+```
+
+#### 4. Build SoapySDR device modules (optional)
+
+Build only the modules for your hardware:
+
+```bash
+./LINUX/soapy.pluto.sh      # Adalm Pluto / Pluto+
+./LINUX/soapy.rtlstick.sh   # RTL-SDR dongles
+./LINUX/soapy.airspy.sh     # Airspy
+./LINUX/soapy.hackrf.sh     # HackRF
+./LINUX/soapy.sdrplay.sh    # SDRplay
+```
+
+#### 5. Run
+
+```bash
+./pihpsdr
+```
+
+On first run, piHPSDR computes FFT wisdom tables — this takes a few minutes, do not interrupt it.
+
+### Adalm Pluto connection
+
+Connect the Pluto via USB before starting piHPSDR. The Pluto must appear as a network
+interface (`pluto.local` or `192.168.2.1`). You can verify with:
+
+```bash
+SoapySDRUtil --find="driver=plutosdr"
+```
+
+### Custom screen resolution
+
+Use the **Screen** menu inside piHPSDR to select "Custom" and set any width/height.
+This is a native feature of the DL1YCF codebase.
+
+---
+
+## piHPSDR Manual
 
 **v2.4:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.4.pdf
 
@@ -14,15 +123,12 @@ It runs on Linux (Raspberry Pi but also Desktop or Laptop computers running LINU
 
 **v2.6:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.6.pdf
 
-**A manual for the current master branch is updated from time to time here:**
-
+**Current master branch manual:**
 https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual.pdf
 
-***
-piHPSDR should be compiled from the sources, consult the Manual (**link given above**) on how to compile/install piHPSDR on your machine
-***
+---
 
-Latest features:
+## Upstream features (DL1YCF)
 
 - manual multi notch filter (in the FILTER menu)
 - NR3/NR4 noise reduction models (RNNnoise and libspecbleach) fully integrated
@@ -32,9 +138,4 @@ Latest features:
 - added continuous frequency compressor (**CFC**) and downward expander (**DEXP**) to the TX chain
 - HermesLite-II I/O-board support
 - audio recording (RX capture) and playback (TX)
-- automatic installation procedures for compilation from the sources, for Linux (including RaspPi) and MacOS
-- dynamic screen resizing in the "Screen" menu, including transitions
-  between full-screen and window mode
-
-
-
+- dynamic screen resizing in the "Screen" menu, including transitions between full-screen and window mode

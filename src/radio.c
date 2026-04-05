@@ -1733,20 +1733,25 @@ void radio_start_radio(void) {
       t_print("%s: create SOAPY transmitter\n", __func__);
       soapy_protocol_create_transmitter(transmitter);
       soapy_protocol_set_tx_antenna(transmitter->antenna);
-      //
-      // LIME: set TX gain to 30 for the auto-calibration that takes place
-      //       upon starting the transmitter
-      //
-      soapy_protocol_set_tx_gain(have_lime ? 30 : transmitter->drive);
-      soapy_protocol_set_tx_frequency();
-      soapy_protocol_start_transmitter();
 
       if (have_lime) {
-        // LIME: set TX gain to 0 to avoid  LO leak. The TX gain
-        //       is set to the nominal drive upon RX/TX transistons,
+        //
+        // LIME: set TX gain to 30 for the auto-calibration that takes place
+        //       upon starting the transmitter, then start immediately.
+        //
+        soapy_protocol_set_tx_gain(30);
+        soapy_protocol_set_tx_frequency();
+        soapy_protocol_start_transmitter();
+        // LIME: set TX gain to 0 to avoid LO leak. The TX gain
+        //       is set to the nominal drive upon RX/TX transitions,
         //       and reset to zero upon TX/RX transitions.
         soapy_protocol_set_tx_gain(0);
       }
+      //
+      // Non-LIME (e.g. Pluto): do NOT activate the TX stream at startup.
+      // The stream will be activated only upon the first RX->TX transition,
+      // after setting the TX frequency and gain (see soapy_protocol_rxtx()).
+      //
     }
 
     t_print("%s: start %d SOAPY receiver(s)\n", __func__, RECEIVERS);
